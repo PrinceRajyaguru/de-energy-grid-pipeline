@@ -1,0 +1,35 @@
+# --- Secrets & credentials (never commit these) ---
+.env
+*.env
+**/secrets/
+**/*token*
+**/*credentials*
+**/*.key
+**/*.pem
+local.settings.json
+*.publishsettings
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# --- Databricks ---
+.databricks/
+*.dbc
+
+# --- Azure / ADF ---
+*.parameters.json.bak
+
+# --- OS / editor ---
+.DS_Store
+.vscode/
+*.log
+
+# --- Raw / large local data (don't commit ADLS pulls) ---
+/data/
+*.parquet
+*.xml.raw
