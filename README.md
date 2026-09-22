@@ -7,6 +7,22 @@ tracks generation vs. load by source and region to flag oversupply
 (negative-price risk) and shortfall (import-dependency) periods — genuine
 grid-operator/trader decision support, not a toy dashboard.
 
+## Project Status
+
+| Stage | Status |
+|---|---|
+| **Ingestion** — pull raw data from the ENTSO-E API, validate its structure, and convert it into clean, flat records | ✅ Complete |
+| **Transformation** — Bronze/Silver/Gold layers in Azure Databricks | Not started |
+| **Reporting** — Power BI dashboard | Not started |
+
+The ingestion layer has been tested against multiple independent days of
+live data, including a full end-to-end run against a day never touched by
+any prior code, and is documented in detail in
+[`docs/entsoe_dataset_notes.md`](docs/entsoe_dataset_notes.md) — covering
+every field, every quirk of the source API, and every data-quality issue
+found and how it was resolved (see [Data Quality Checks](#data-quality-checks)
+below for a summary).
+
 ## Architecture
 
 ```
@@ -49,10 +65,26 @@ Power BI Dashboard
     correctly returns a "no data" response)
   - Day-ahead wind/solar forecast (`A69`), generation forecast (`A71`), and
     installed generation capacity per type (`A68`)
-- **Access**: RESTful API, registered account + security token required
-  (free). Token stored locally in `.env` (gitignored), never committed.
-- **License / usage terms**: _(fill in — see ENTSO-E Transparency Platform Terms
-  of Use before publishing derived data)._
+- **Access**: RESTful API, registered account + security token required (free).
+  To get one:
+  1. Register at [transparency.entsoe.eu](https://transparency.entsoe.eu) —
+     click **Sign in** → **Register**, and set a password (14+ characters,
+     including a special character).
+  2. Email **transparency@entsoe.eu** with the subject line
+     `RESTful API access` and your registered email address in the body.
+     ENTSO-E's helpdesk typically responds within ~3 working days.
+  3. Once access is granted, log in and go to **My Account Settings** →
+     generate your security token there.
+  4. Set it locally as `ENTSOE_API_TOKEN=<your token>` — never commit it (see
+     `.gitignore`).
+- **License / usage terms**: Data on the Transparency Platform is published
+  under EU Regulation 543/2013, and ENTSO-E lists most of it as open for reuse
+  (including commercial use) under **CC BY 4.0**, requiring attribution to
+  ENTSO-E as the source. Not every dataset on the platform is necessarily
+  covered the same way, so before publishing anything derived from this data,
+  verify current terms directly on the
+  [Transparency Platform's legal terms page](https://transparencyplatform.zendesk.com/hc/en-us/articles/40921911218961-Legal-Terms-and-Conditions)
+  rather than relying on this summary.
 
 ## Tech Stack
 
@@ -64,8 +96,8 @@ Power BI Dashboard
 
 ## How to Run
 
-**Phase 1 (ingestion — fetch + parse to flat JSON) is complete.** ADF/ADLS/
-Databricks/Power BI phases are not yet built.
+The commands below run the ingestion layer end to end: pulling raw data from
+the ENTSO-E API and converting it into clean, flat JSON records.
 
 ```bash
 cd ingestion
@@ -84,7 +116,8 @@ python parse_entsoe.py 2026-09-21
 python parse_flows.py 2026-09-21
 python parse_forecast_capacity.py 2026-09-21
 
-# Run the one synthetic test (leading-gap edge case, never seen in real data)
+# Run the test suite (includes a synthetic case for an edge condition
+# not yet observed in live data)
 python test_parse_flows_leading_gap.py
 ```
 
@@ -100,8 +133,10 @@ implemented)_
 
 ## Data Quality Checks
 
-Full detail in [`docs/entsoe_dataset_notes.md`](docs/entsoe_dataset_notes.md).
-Summary of what's handled at the ingestion layer today:
+The source API has several undocumented quirks that would silently corrupt
+downstream analysis if left unhandled. Full detail in
+[`docs/entsoe_dataset_notes.md`](docs/entsoe_dataset_notes.md); summary of
+what the ingestion layer handles:
 
 - **Point compression**: ENTSO-E omits a data point whenever its value is
   unchanged from the previous one (confirmed in generation, price, and flow
