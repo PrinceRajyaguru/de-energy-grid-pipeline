@@ -157,10 +157,149 @@ Not encountered in this exploration (3 sequential GET requests, no 429s).
 Not yet characterized — no retry/backoff logic exists yet in
 `fetch_entsoe.py`. Needed before any multi-day historical backfill.
 
+## Dataset 4 — Cross-border physical flows (A11)
+
+Pulled to make "shortfall (import dependency)" a measured fact instead of an
+inferred guess from load exceeding domestic generation. None of the first 3
+datasets measure imports/exports directly.
+
+Same day as the other datasets (2026-09-21, UTC), for DE-LU's 3 biggest
+interconnectors: **France, Netherlands, Poland**, both directions each (6
+requests total). Root element `Publication_MarketDocument` (same family as
+day-ahead prices), `type=A11`.
+
+### Domain codes — verified, not guessed
+
+Looked these up via search, but a third-party GitHub list was the only
+concrete source found (ENTSO-E's own EIC pages didn't surface a direct
+downloadable Area List in this session). Rather than trust that unverified,
+**every candidate code was tested against the live API** (an actual `A65`
+load request) — a wrong code returns an `Acknowledgement_MarketDocument`
+error, not a data document. All 5 below returned real data:
+
+| Zone | EIC domain code | Verified how |
+|---|---|---|
+| DE-LU | `10Y1001A1001A82H` | already in use since dataset 1–3 |
+| France (FR) | `10YFR-RTE------C` | live API test — OK |
+| Netherlands (NL) | `10YNL----------L` | live API test — OK |
+| Denmark DK1 | `10YDK-1--------W` | live API test — OK (code only, not pulled) |
+| Denmark DK2 | `10Y1001A1001A796` | live API test — OK (code only, not pulled) |
+| Poland (PL) | `10YPL-AREA-----S` | live API test — OK |
+
+Denmark's codes are confirmed and recorded here for a future pull; flow data
+itself was not fetched for DK1/DK2 this round (kept to 3 interconnectors to
+stay manageable).
+
+### How direction works — no `flowDirection` field, must query per pair
+
+`A11` is queried as one `in_Domain`/`out_Domain` pair per request — there is
+**no parameter that returns "net" flow directly**. To get DE→neighbor you set
+`in_Domain=neighbor, out_Domain=DE-LU`; for neighbor→DE you swap them. This
+was pulled explicitly both ways per neighbor (`fetch_flows.py`).
+
+Confirmed empirically across all 6 files: `businessType` is always `A66`
+regardless of direction, and quantities are **never negative** — each
+direction's file is a plain non-negative magnitude, not a signed net value.
+**Net import must be computed ourselves**: `net_import = (neighbor→DE) -
+(DE→neighbor)`, done per-timestamp in `parse_flows.py`.
+
+### ⚠️ Structural surprise — Points are compressed, not one-per-interval
+
+This is different from generation/load/price, and important enough that
+flattening logic was paused and shown before being written (per the "stop
+and check" rule).
+
+Generation and load data had exactly 92 `Point` elements per `TimeSeries`
+(one per 15-min interval in the request window) — every position present.
+Flow data does **not**: a `Point` is only emitted when its value *changes*
+from the previous one. Example from `flow_NL_to_DE_20260921.xml` (full file,
+only 6 `Point`s for a whole day):
+
+```
+position=1  quantity=0          <- flow is 0 from position 1 through 28
+position=29 quantity=273.70667  <- changes here
+position=30 quantity=539.61667
+position=31 quantity=731.68999
+position=32 quantity=535.82667
+position=33 quantity=0          <- drops to 0, stays 0 through position 92
+```
+
+Observed compression varied a lot by direction/neighbor in this sample:
+
+| Neighbor | export (DE→n) explicit points | import (n→DE) explicit points |
+|---|---|---|
+| FR | 30/92 (33%) | 92/92 (100%) |
+| NL | 89/92 (97%) | 6/92 (7%) |
+| PL | 92/92 (100%) | 12/92 (13%) |
+
+**Decision:** `parse_flows.py` forward-fills every skipped position with the
+last explicit value, producing one row per 15-min interval (verified by
+spot-checking output against the raw XML — matches exactly). This assumes
+"missing position = value unchanged," which fits every case inspected here,
+but has only been confirmed on one day's sample. If a future pull ever shows
+position 1 missing (no value to forward-fill from), `parse_flows.py` raises
+rather than guessing a default.
+
+**Open question, not yet resolved:** whether this same compression applies
+to generation/load/price data on days where a value happens to stay exactly
+constant across intervals (we just never saw it in the one sample pulled,
+because those values fluctuate constantly). If Bronze/Silver parsing for
+those 3 datasets is ever built assuming "always 92 explicit points," that
+assumption should be re-tested, not carried over from this one day.
+
+### Resolution — matches the other datasets
+
+`PT15M`, same as generation/load/day-ahead prices. No resolution mismatch to
+worry about for Silver-layer alignment — once forward-filled, all 4 datasets
+share the same 15-minute grid.
+
+### Flattened row shape
+
+```json
+{
+  "timestamp_utc": "2026-09-21T07:00:00Z",
+  "region": "DE-LU",
+  "neighbor": "NL",
+  "export_mw": 0.0,
+  "import_mw": 273.70667,
+  "net_import_mw": 273.70667,
+  "unit": "MAW",
+  "resolution": "PT15M"
+}
+```
+
+### Missing/malformed periods
+
+None of the usual `<Reason>`/`A99`/`A91` markers seen — same as the other 3
+datasets. The Point-compression behavior above is a distinct, separate thing
+from missing-data markers (it's a valid, complete series, just sparsely
+encoded).
+
+## Future additions (documented, not yet pulled)
+
+- **Day-ahead generation forecast** (`documentType=A69`/`A71`), especially
+  wind/solar. Would let the pipeline flag "surprise" stress — actual
+  generation diverging from what was forecast — rather than only comparing
+  raw generation against a static threshold. Not pulled yet; needs the same
+  structural-exploration pass as the 4 datasets above before assuming its
+  shape.
+- **Installed generation capacity per type** (`documentType=A68`). Would let
+  the pipeline compute *% of available capacity running* per source instead
+  of raw MW, which is a more meaningful stress signal (e.g. "gas at 90% of
+  installed capacity" says more than "gas at 4,000 MW" on its own). Not
+  pulled yet.
+
 ## Files
 
-- `ingestion/fetch_entsoe.py` — pulls raw XML → `data/raw/` (gitignored)
-- `ingestion/parse_entsoe.py` — flattens XML → `data/processed/*.json`
-  (gitignored) + prints structural summary
-- `data/processed/_structure_summary.json` — machine-readable version of the
-  summary printed above, per dataset
+- `ingestion/fetch_entsoe.py` — pulls generation/load/price raw XML →
+  `data/raw/` (gitignored)
+- `ingestion/parse_entsoe.py` — flattens generation/load/price XML →
+  `data/processed/*.json` (gitignored) + prints structural summary
+- `ingestion/fetch_flows.py` — pulls cross-border flow raw XML (A11) →
+  `data/raw/` (gitignored)
+- `ingestion/parse_flows.py` — forward-fills and flattens flow XML,
+  computes net import → `data/processed/cross_border_flows.json`
+  (gitignored)
+- `data/processed/_structure_summary.json`,
+  `data/processed/_flows_structure_summary.json` — machine-readable
+  structural summaries
