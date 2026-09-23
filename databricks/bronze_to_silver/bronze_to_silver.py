@@ -171,7 +171,18 @@ storage_options = {
 
 def write_delta(df, container_name, table_name):
     rows = [row.asDict() for row in df.collect()]
-    pdf = pd.DataFrame(rows)
+    pdf = pd.DataFrame(rows, columns=df.columns)
+    # An all-null column becomes a Null-typed Arrow column, which Delta rejects; cast from the Spark schema
+    for field in df.schema.fields:
+        t = field.dataType.simpleString()
+        if t in ("double", "float") or t.startswith("decimal"):
+            pdf[field.name] = pdf[field.name].astype("float64")
+        elif t in ("bigint", "int", "smallint", "tinyint"):
+            pdf[field.name] = pdf[field.name].astype("Int64")
+        elif t == "string":
+            pdf[field.name] = pdf[field.name].astype("string")
+        elif t.startswith("timestamp"):
+            pdf[field.name] = pd.to_datetime(pdf[field.name])
     path = f"abfss://{container_name}@stdeenergygriddev.dfs.core.windows.net/{table_name}"
     write_deltalake(path, pdf, storage_options=storage_options, mode="overwrite")
     print(f"Wrote Delta table: {path}")
