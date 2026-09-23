@@ -1,0 +1,97 @@
+{
+	"name": "pl_ENTSOE_Capacity",
+	"properties": {
+		"activities": [
+			{
+				"name": "GetEntsoeToken",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"url": "https://kv-de-energy-grid-dev.vault.azure.net/secrets/entsoe-api-token?api-version=7.4",
+					"authentication": {
+						"type": "MSI",
+						"resource": "https://vault.azure.net"
+					}
+				}
+			},
+			{
+				"name": "CopyCapacityToBronze",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "GetEntsoeToken",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "BinarySource",
+						"storeSettings": {
+							"type": "HttpReadSettings",
+							"requestMethod": "GET"
+						},
+						"formatSettings": {
+							"type": "BinaryReadSettings"
+						}
+					},
+					"sink": {
+						"type": "BinarySink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_ENTSOE_Source_HTTP",
+						"type": "DatasetReference",
+						"parameters": {
+							"securityToken": "@activity('GetEntsoeToken').output.value",
+							"documentType": "A68",
+							"processType": "A33",
+							"inDomain": "10Y1001A1001A82H",
+							"periodStart": "@concat(pipeline().parameters.targetYear, '01010000')",
+							"periodEnd": "@concat(string(add(int(pipeline().parameters.targetYear), 1)), '01010000')"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_Bronze_Sink",
+						"type": "DatasetReference",
+						"parameters": {
+							"datasetType": "capacity",
+							"fileName": "@concat('capacity_', pipeline().parameters.targetYear, '.xml')"
+						}
+					}
+				]
+			}
+		],
+		"parameters": {
+			"targetYear": {
+				"type": "string"
+			}
+		},
+		"annotations": []
+	}
+}
