@@ -427,6 +427,22 @@
 								"inDomain": "10YDK-1--------W",
 								"outDomain": "10Y1001A1001A82H",
 								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "forecast_wind_solar",
+								"documentType": "A69",
+								"processType": "A01",
+								"inDomain": "10Y1001A1001A82H",
+								"outDomain": "",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "forecast_generation",
+								"documentType": "A71",
+								"processType": "A01",
+								"inDomain": "10Y1001A1001A82H",
+								"outDomain": "",
+								"outBiddingZoneDomain": ""
 							}
 						]
 					}
