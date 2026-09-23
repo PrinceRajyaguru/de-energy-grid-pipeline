@@ -1,0 +1,12 @@
+{
+	"name": "ls_ENTSOE_HTTP",
+	"properties": {
+		"annotations": [],
+		"type": "HttpServer",
+		"typeProperties": {
+			"url": "https://web-api.tp.entsoe.eu/api/",
+			"enableServerCertificateValidation": true,
+			"authenticationType": "Anonymous"
+		}
+	}
+}
