@@ -22,6 +22,85 @@
 						"resource": "https://vault.azure.net"
 					}
 				}
+			},
+			{
+				"name": "ForEachDataset",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "GetEntsoeToken",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@variables('datasetConfigs')",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "CopyToBronze",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "RestSource",
+									"httpRequestTimeout": "00:01:40",
+									"requestInterval": "00.00:00:00.010",
+									"requestMethod": "GET",
+									"paginationRules": {
+										"supportRFC5988": "true"
+									}
+								},
+								"sink": {
+									"type": "BinarySink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_ENTSOE_Source",
+									"type": "DatasetReference",
+									"parameters": {
+										"securityToken": "@activity('GetEntsoeToken').output.value",
+										"documentType": "@item().documentType",
+										"processType": "@item().processType",
+										"inDomain": "@item().inDomain",
+										"outDomain": "@item().outDomain",
+										"outBiddingZoneDomain": "@item().outBiddingZoneDomain",
+										"periodStart": "@concat(formatDateTime(pipeline().parameters.targetDate,'yyyyMMdd'),'0000')",
+										"periodEnd": "@concat(formatDateTime(addDays(pipeline().parameters.targetDate,1),'yyyyMMdd'),'0000')"
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ds_Bronze_Sink",
+									"type": "DatasetReference",
+									"parameters": {
+										"datasetType": "@item().datasetType",
+										"fileName": "@concat(item().datasetType,'_',formatDateTime(pipeline().parameters.targetDate,'yyyy-MM-dd'),'.xml')"
+									}
+								}
+							]
+						}
+					]
+				}
 			}
 		],
 		"parameters": {
