@@ -73,14 +73,15 @@ display(gold)
 # COMMAND ----------
 
 import pandas as pd
-from deltalake import write_deltalake
+from deltalake import DeltaTable, write_deltalake
 
 storage_options = {
     "account_name": "stdeenergygriddev",
     "account_key": storage_key,
 }
 
-def write_delta(df, container_name, table_name):
+def write_delta(df, container_name, table_name, target_date_str):
+    df = df.filter(F.col("date") == F.lit(target_date_str).cast("date"))
     rows = [row.asDict() for row in df.collect()]
     pdf = pd.DataFrame(rows, columns=df.columns)
     # An all-null column becomes a Null-typed Arrow column, which Delta rejects; cast from the Spark schema
@@ -95,10 +96,25 @@ def write_delta(df, container_name, table_name):
         elif t.startswith("timestamp"):
             pdf[field.name] = pd.to_datetime(pdf[field.name])
     path = f"abfss://{container_name}@stdeenergygriddev.dfs.core.windows.net/{table_name}"
-    write_deltalake(path, pdf, storage_options=storage_options, mode="overwrite")
-    print(f"Wrote Delta table: {path}")
+    # Replace-where needs an existing table; the first write creates the partitioned table without a predicate
+    if DeltaTable.is_deltatable(path, storage_options=storage_options):
+        write_deltalake(path, pdf, storage_options=storage_options, mode="overwrite",
+                        partition_by=["date"], predicate=f"date = '{target_date_str}'")
+    else:
+        write_deltalake(path, pdf, storage_options=storage_options, mode="overwrite", partition_by=["date"])
+    print(f"Wrote Delta partition date={target_date_str} to {path}")
 
-write_delta(gold, "gold", "entsoe_gold_hourly")
+gold = gold.withColumn("date", F.to_date(F.col("hour")))
+
+distinct_dates = sorted([r["date"] for r in gold.select("date").distinct().collect()])
+if len(distinct_dates) == 0:
+    raise ValueError("No dates found - nothing to write")
+
+for d in distinct_dates:
+    date_str = str(d)
+    partition_df = gold.filter(F.col("date") == F.lit(d))
+    write_delta(partition_df, "gold", "entsoe_gold_hourly", date_str)
+    print(f"Wrote partition date={date_str} ({partition_df.count()} rows)")
 
 # COMMAND ----------
 
