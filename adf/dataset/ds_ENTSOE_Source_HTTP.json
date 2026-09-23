@@ -1,0 +1,46 @@
+{
+	"name": "ds_ENTSOE_Source_HTTP",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_ENTSOE_HTTP",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"securityToken": {
+				"type": "string"
+			},
+			"documentType": {
+				"type": "string"
+			},
+			"processType": {
+				"type": "string"
+			},
+			"inDomain": {
+				"type": "string"
+			},
+			"outDomain": {
+				"type": "string"
+			},
+			"outBiddingZoneDomain": {
+				"type": "string"
+			},
+			"periodStart": {
+				"type": "string"
+			},
+			"periodEnd": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Binary",
+		"typeProperties": {
+			"location": {
+				"type": "HttpServerLocation",
+				"relativeUrl": {
+					"value": "@concat('?securityToken=', dataset().securityToken, '&documentType=', dataset().documentType, '&processType=', dataset().processType, '&in_Domain=', dataset().inDomain, '&out_Domain=', dataset().outDomain, '&outBiddingZone_Domain=', dataset().outBiddingZoneDomain, '&periodStart=', dataset().periodStart, '&periodEnd=', dataset().periodEnd)",
+					"type": "Expression"
+				}
+			}
+		}
+	}
+}
