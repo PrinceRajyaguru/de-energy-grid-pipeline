@@ -1,4 +1,18 @@
 # Databricks notebook source
+# MAGIC %pip install azure-storage-blob
+# MAGIC dbutils.library.restartPython()
+
+# COMMAND ----------
+
+import io
+from azure.storage.blob import BlobServiceClient
+
+storage_key = dbutils.secrets.get(scope="adls_secrets", key="storage_key")
+conn_str = f"DefaultEndpointsProtocol=https;AccountName=stdeenergygriddev;AccountKey={storage_key};EndpointSuffix=core.windows.net"
+blob_service = BlobServiceClient.from_connection_string(conn_str)
+
+# COMMAND ----------
+
 from pyspark.sql import functions as F
 
 silver = spark.table("entsoe_silver")
@@ -55,6 +69,18 @@ gold = (gen.join(load, "hour", "outer")
 
 gold.write.mode("overwrite").saveAsTable("entsoe_gold_hourly")
 display(gold)
+
+# COMMAND ----------
+
+def upload_parquet(df, container_name, blob_name):
+    buf = io.BytesIO()
+    df.toPandas().to_parquet(buf, index=False)
+    buf.seek(0)
+    blob_service.get_container_client(container_name).upload_blob(blob_name, buf, overwrite=True)
+    print(f"Wrote {container_name}/{blob_name}")
+
+upload_parquet(spark.table("entsoe_silver"), "silver", "entsoe_silver.parquet")
+upload_parquet(gold, "gold", "entsoe_gold_hourly.parquet")
 
 # COMMAND ----------
 
