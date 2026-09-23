@@ -1,0 +1,32 @@
+{
+	"name": "tr_Monthly_Capacity",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Stopped",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "pl_ENTSOE_Capacity",
+					"type": "PipelineReference"
+				},
+				"parameters": {
+					"targetYear": "@string(year(trigger().scheduledTime))"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Month",
+				"interval": 1,
+				"startTime": "2026-09-24T06:00:00",
+				"timeZone": "Greenwich Standard Time",
+				"schedule": {
+					"monthDays": [
+						1
+					]
+				}
+			}
+		}
+	}
+}
