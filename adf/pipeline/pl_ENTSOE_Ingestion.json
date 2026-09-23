@@ -29,6 +29,165 @@
 				"type": "string"
 			}
 		},
+		"variables": {
+			"datasetConfigs": {
+				"type": "Array",
+				"defaultValue": [
+					{
+						"datasetType": "generation",
+						"documentType": "A75",
+						"processType": "A16",
+						"inDomain": "10Y1001A1001A82H",
+						"outDomain": "",
+						"outBiddingZoneDomain": ""
+					},
+					{
+						"datasetType": "load",
+						"documentType": "A65",
+						"processType": "A16",
+						"inDomain": "",
+						"outDomain": "",
+						"outBiddingZoneDomain": "10Y1001A1001A82H"
+					},
+					{
+						"datasetType": "price",
+						"documentType": "A44",
+						"processType": "",
+						"inDomain": "10Y1001A1001A82H",
+						"outDomain": "10Y1001A1001A82H",
+						"outBiddingZoneDomain": ""
+					},
+					{
+						"datasetType": "flow_FR_import",
+						"documentType": "A11",
+						"processType": "",
+						"inDomain": "10Y1001A1001A82H",
+						"outDomain": "10YFR-RTE------C",
+						"outBiddingZoneDomain": ""
+					},
+					{
+						"datasetType": "flow_FR_export",
+						"documentType": "A11",
+						"processType": "",
+						"inDomain": "10YFR-RTE------C",
+						"outDomain": "10Y1001A1001A82H",
+						"outBiddingZoneDomain": ""
+					},
+					{
+						"datasetType": "flow_NL_import",
+						"documentType": "A11",
+						"processType": "",
+						"inDomain": "10Y1001A1001A82H",
+						"outDomain": "10YNL----------L",
+						"outBiddingZoneDomain": ""
+					},
+					{
+						"datasetType": "flow_NL_export",
+						"documentType": "A11",
+						"processType": "",
+						"inDomain": "10YNL----------L",
+						"outDomain": "10Y1001A1001A82H",
+						"outBiddingZoneDomain": ""
+					},
+					{
+						"datasetType": "flow_PL_import",
+						"documentType": "A11",
+						"processType": "",
+						"inDomain": "10Y1001A1001A82H",
+						"outDomain": "10YPL-AREA-----S",
+						"outBiddingZoneDomain": ""
+					},
+					{
+						"datasetType": "flow_PL_export",
+						"documentType": "A11",
+						"processType": "",
+						"inDomain": "10YPL-AREA-----S",
+						"outDomain": "10Y1001A1001A82H",
+						"outBiddingZoneDomain": ""
+					},
+					{
+						"datasetType": "flow_AT_import",
+						"documentType": "A11",
+						"processType": "",
+						"inDomain": "10Y1001A1001A82H",
+						"outDomain": "10YAT-APG------L",
+						"outBiddingZoneDomain": ""
+					},
+					{
+						"datasetType": "flow_AT_export",
+						"documentType": "A11",
+						"processType": "",
+						"inDomain": "10YAT-APG------L",
+						"outDomain": "10Y1001A1001A82H",
+						"outBiddingZoneDomain": ""
+					},
+					{
+						"datasetType": "flow_CH_import",
+						"documentType": "A11",
+						"processType": "",
+						"inDomain": "10Y1001A1001A82H",
+						"outDomain": "10YCH-SWISSGRIDZ",
+						"outBiddingZoneDomain": ""
+					},
+					{
+						"datasetType": "flow_CH_export",
+						"documentType": "A11",
+						"processType": "",
+						"inDomain": "10YCH-SWISSGRIDZ",
+						"outDomain": "10Y1001A1001A82H",
+						"outBiddingZoneDomain": ""
+					},
+					{
+						"datasetType": "flow_BE_import",
+						"documentType": "A11",
+						"processType": "",
+						"inDomain": "10Y1001A1001A82H",
+						"outDomain": "10YBE----------2",
+						"outBiddingZoneDomain": ""
+					},
+					{
+						"datasetType": "flow_BE_export",
+						"documentType": "A11",
+						"processType": "",
+						"inDomain": "10YBE----------2",
+						"outDomain": "10Y1001A1001A82H",
+						"outBiddingZoneDomain": ""
+					},
+					{
+						"datasetType": "flow_CZ_import",
+						"documentType": "A11",
+						"processType": "",
+						"inDomain": "10Y1001A1001A82H",
+						"outDomain": "10YCZ-CEPS-----N",
+						"outBiddingZoneDomain": ""
+					},
+					{
+						"datasetType": "flow_CZ_export",
+						"documentType": "A11",
+						"processType": "",
+						"inDomain": "10YCZ-CEPS-----N",
+						"outDomain": "10Y1001A1001A82H",
+						"outBiddingZoneDomain": ""
+					},
+					{
+						"datasetType": "flow_DK1_import",
+						"documentType": "A11",
+						"processType": "",
+						"inDomain": "10Y1001A1001A82H",
+						"outDomain": "10YDK-1--------W",
+						"outBiddingZoneDomain": ""
+					},
+					{
+						"datasetType": "flow_DK1_export",
+						"documentType": "A11",
+						"processType": "",
+						"inDomain": "10YDK-1--------W",
+						"outDomain": "10Y1001A1001A82H",
+						"outBiddingZoneDomain": ""
+					}
+				]
+			}
+		},
 		"annotations": []
 	}
 }
