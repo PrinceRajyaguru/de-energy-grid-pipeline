@@ -41,6 +41,7 @@ def resolution_minutes(res_str):
 
 def parse_xml_bytes(xml_bytes, dataset_type):
     rows, gaps = [], []
+    unit = "EUR/MWh" if dataset_type == "price" else "MW"
     try:
         root = ET.fromstring(xml_bytes)
     except ET.ParseError:
@@ -92,7 +93,7 @@ def parse_xml_bytes(xml_bytes, dataset_type):
                     pos, qty = None, None
                     for c in pchild:
                         if local(c.tag) == "position": pos = int(c.text)
-                        if local(c.tag) == "quantity": qty = float(c.text)
+                        if local(c.tag) in ("quantity", "price.amount"): qty = float(c.text)
                     if pos is not None:
                         points[pos] = qty
 
@@ -103,7 +104,7 @@ def parse_xml_bytes(xml_bytes, dataset_type):
                 val = points.get(1)
                 rows.append(dict(timestamp=start_dt, resolution_minutes=None, dataset_type=dataset_type,
                     psr_type=PSR_TYPES.get(psr_type, psr_type), flow_direction=flow_direction,
-                    neighbor_zone=neighbor_zone, direction=direction, value=val, unit="MW"))
+                    neighbor_zone=neighbor_zone, direction=direction, value=val, unit=unit))
                 continue
 
             res_min = resolution_minutes(res_str)
@@ -115,11 +116,11 @@ def parse_xml_bytes(xml_bytes, dataset_type):
                     last_val = points[pos]
                     rows.append(dict(timestamp=ts_val, resolution_minutes=res_min, dataset_type=dataset_type,
                         psr_type=PSR_TYPES.get(psr_type, psr_type), flow_direction=flow_direction,
-                        neighbor_zone=neighbor_zone, direction=direction, value=last_val, unit="MW"))
+                        neighbor_zone=neighbor_zone, direction=direction, value=last_val, unit=unit))
                 elif last_val is not None:
                     rows.append(dict(timestamp=ts_val, resolution_minutes=res_min, dataset_type=dataset_type,
                         psr_type=PSR_TYPES.get(psr_type, psr_type), flow_direction=flow_direction,
-                        neighbor_zone=neighbor_zone, direction=direction, value=last_val, unit="MW"))
+                        neighbor_zone=neighbor_zone, direction=direction, value=last_val, unit=unit))
                 else:
                     gaps.append(dict(dataset_type=dataset_type, missing_timestamp=ts_val))
 
