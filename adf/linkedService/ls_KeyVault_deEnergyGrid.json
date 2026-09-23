@@ -1,0 +1,10 @@
+{
+	"name": "ls_KeyVault_deEnergyGrid",
+	"properties": {
+		"annotations": [],
+		"type": "AzureKeyVault",
+		"typeProperties": {
+			"baseUrl": "https://kv-de-energy-grid-dev.vault.azure.net/"
+		}
+	}
+}
