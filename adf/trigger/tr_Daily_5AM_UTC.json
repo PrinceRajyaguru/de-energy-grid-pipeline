@@ -1,0 +1,27 @@
+{
+	"name": "tr_Daily_5AM_UTC",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Stopped",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "pl_ENTSOE_Ingestion",
+					"type": "PipelineReference"
+				},
+				"parameters": {
+					"targetDate": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'yyyy-MM-dd')"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Day",
+				"interval": 1,
+				"startTime": "2026-09-24T05:00:00",
+				"timeZone": "Greenwich Standard Time"
+			}
+		}
+	}
+}
