@@ -1,0 +1,438 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "adf-de-energy-grid-dev"
+		},
+		"ls_KeyVault_deEnergyGrid_properties_typeProperties_baseUrl": {
+			"type": "string",
+			"defaultValue": "https://kv-de-energy-grid-dev.vault.azure.net/"
+		},
+		"ls_ADLS_deEnergyGrid_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://stdeenergygriddev.dfs.core.windows.net/"
+		},
+		"ls_ENTSOE_HTTP_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://web-api.tp.entsoe.eu/api"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_KeyVault_deEnergyGrid')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureKeyVault",
+				"typeProperties": {
+					"baseUrl": "[parameters('ls_KeyVault_deEnergyGrid_properties_typeProperties_baseUrl')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_ADLS_deEnergyGrid')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('ls_ADLS_deEnergyGrid_properties_typeProperties_url')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_Bronze_Sink')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_ADLS_deEnergyGrid",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"datasetType": {
+						"type": "string"
+					},
+					"fileName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Binary",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "@dataset().fileName",
+						"folderPath": "@dataset().datasetType",
+						"fileSystem": "bronze"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_ADLS_deEnergyGrid')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_ENTSOE_Ingestion')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "GetEntsoeToken",
+						"type": "WebActivity",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "GET",
+							"headers": {},
+							"url": "https://kv-de-energy-grid-dev.vault.azure.net/secrets/entsoe-api-token?api-version=7.4",
+							"authentication": {
+								"type": "MSI",
+								"resource": "https://vault.azure.net"
+							}
+						}
+					},
+					{
+						"name": "ForEachDataset",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "GetEntsoeToken",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@variables('datasetConfigs')",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "CopyToBronze",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 3,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "BinarySource",
+											"storeSettings": {
+												"type": "HttpReadSettings",
+												"requestMethod": "GET"
+											},
+											"formatSettings": {
+												"type": "BinaryReadSettings"
+											}
+										},
+										"sink": {
+											"type": "BinarySink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											}
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "ds_ENTSOE_Source_HTTP",
+											"type": "DatasetReference",
+											"parameters": {
+												"securityToken": "@activity('GetEntsoeToken').output.value",
+												"documentType": "@item().documentType",
+												"processType": {
+													"value": "@item().processType",
+													"type": "Expression"
+												},
+												"inDomain": "@item().inDomain",
+												"outDomain": "@item().outDomain",
+												"outBiddingZoneDomain": "@item().outBiddingZoneDomain",
+												"periodStart": "@concat(formatDateTime(pipeline().parameters.targetDate,'yyyyMMdd'),'0000')",
+												"periodEnd": "@concat(formatDateTime(addDays(pipeline().parameters.targetDate,1),'yyyyMMdd'),'0000')"
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "ds_Bronze_Sink",
+											"type": "DatasetReference",
+											"parameters": {
+												"datasetType": "@item().datasetType",
+												"fileName": "@concat(item().datasetType,'_',formatDateTime(pipeline().parameters.targetDate,'yyyy-MM-dd'),'.xml')"
+											}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"targetDate": {
+						"type": "string"
+					}
+				},
+				"variables": {
+					"datasetConfigs": {
+						"type": "Array",
+						"defaultValue": [
+							{
+								"datasetType": "generation",
+								"documentType": "A75",
+								"processType": "A16",
+								"inDomain": "10Y1001A1001A82H",
+								"outDomain": "",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "load",
+								"documentType": "A65",
+								"processType": "A16",
+								"inDomain": "",
+								"outDomain": "",
+								"outBiddingZoneDomain": "10Y1001A1001A82H"
+							},
+							{
+								"datasetType": "price",
+								"documentType": "A44",
+								"processType": "",
+								"inDomain": "10Y1001A1001A82H",
+								"outDomain": "10Y1001A1001A82H",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "flow_FR_import",
+								"documentType": "A11",
+								"processType": "",
+								"inDomain": "10Y1001A1001A82H",
+								"outDomain": "10YFR-RTE------C",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "flow_FR_export",
+								"documentType": "A11",
+								"processType": "",
+								"inDomain": "10YFR-RTE------C",
+								"outDomain": "10Y1001A1001A82H",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "flow_NL_import",
+								"documentType": "A11",
+								"processType": "",
+								"inDomain": "10Y1001A1001A82H",
+								"outDomain": "10YNL----------L",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "flow_NL_export",
+								"documentType": "A11",
+								"processType": "",
+								"inDomain": "10YNL----------L",
+								"outDomain": "10Y1001A1001A82H",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "flow_PL_import",
+								"documentType": "A11",
+								"processType": "",
+								"inDomain": "10Y1001A1001A82H",
+								"outDomain": "10YPL-AREA-----S",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "flow_PL_export",
+								"documentType": "A11",
+								"processType": "",
+								"inDomain": "10YPL-AREA-----S",
+								"outDomain": "10Y1001A1001A82H",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "flow_AT_import",
+								"documentType": "A11",
+								"processType": "",
+								"inDomain": "10Y1001A1001A82H",
+								"outDomain": "10YAT-APG------L",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "flow_AT_export",
+								"documentType": "A11",
+								"processType": "",
+								"inDomain": "10YAT-APG------L",
+								"outDomain": "10Y1001A1001A82H",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "flow_CH_import",
+								"documentType": "A11",
+								"processType": "",
+								"inDomain": "10Y1001A1001A82H",
+								"outDomain": "10YCH-SWISSGRIDZ",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "flow_CH_export",
+								"documentType": "A11",
+								"processType": "",
+								"inDomain": "10YCH-SWISSGRIDZ",
+								"outDomain": "10Y1001A1001A82H",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "flow_BE_import",
+								"documentType": "A11",
+								"processType": "",
+								"inDomain": "10Y1001A1001A82H",
+								"outDomain": "10YBE----------2",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "flow_BE_export",
+								"documentType": "A11",
+								"processType": "",
+								"inDomain": "10YBE----------2",
+								"outDomain": "10Y1001A1001A82H",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "flow_CZ_import",
+								"documentType": "A11",
+								"processType": "",
+								"inDomain": "10Y1001A1001A82H",
+								"outDomain": "10YCZ-CEPS-----N",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "flow_CZ_export",
+								"documentType": "A11",
+								"processType": "",
+								"inDomain": "10YCZ-CEPS-----N",
+								"outDomain": "10Y1001A1001A82H",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "flow_DK1_import",
+								"documentType": "A11",
+								"processType": "",
+								"inDomain": "10Y1001A1001A82H",
+								"outDomain": "10YDK-1--------W",
+								"outBiddingZoneDomain": ""
+							},
+							{
+								"datasetType": "flow_DK1_export",
+								"documentType": "A11",
+								"processType": "",
+								"inDomain": "10YDK-1--------W",
+								"outDomain": "10Y1001A1001A82H",
+								"outBiddingZoneDomain": ""
+							}
+						]
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_ENTSOE_Source_HTTP')]",
+				"[concat(variables('factoryId'), '/datasets/ds_Bronze_Sink')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_ENTSOE_HTTP')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "HttpServer",
+				"typeProperties": {
+					"url": "[parameters('ls_ENTSOE_HTTP_properties_typeProperties_url')]",
+					"enableServerCertificateValidation": true,
+					"authenticationType": "Anonymous"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_ENTSOE_Source_HTTP')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_ENTSOE_HTTP",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"securityToken": {
+						"type": "string"
+					},
+					"documentType": {
+						"type": "string"
+					},
+					"processType": {
+						"type": "string"
+					},
+					"inDomain": {
+						"type": "string"
+					},
+					"outDomain": {
+						"type": "string"
+					},
+					"outBiddingZoneDomain": {
+						"type": "string"
+					},
+					"periodStart": {
+						"type": "string"
+					},
+					"periodEnd": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Binary",
+				"typeProperties": {
+					"location": {
+						"type": "HttpServerLocation",
+						"relativeUrl": {
+							"value": "@concat('?securityToken=', dataset().securityToken, '&documentType=', dataset().documentType, '&processType=', dataset().processType, '&in_Domain=', dataset().inDomain, '&out_Domain=', dataset().outDomain, '&outBiddingZone_Domain=', dataset().outBiddingZoneDomain, '&periodStart=', dataset().periodStart, '&periodEnd=', dataset().periodEnd)",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_ENTSOE_HTTP')]"
+			]
+		}
+	]
+}

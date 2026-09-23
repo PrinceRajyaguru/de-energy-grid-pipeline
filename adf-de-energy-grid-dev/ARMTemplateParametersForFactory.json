@@ -1,0 +1,18 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "adf-de-energy-grid-dev"
+		},
+		"ls_KeyVault_deEnergyGrid_properties_typeProperties_baseUrl": {
+			"value": "https://kv-de-energy-grid-dev.vault.azure.net/"
+		},
+		"ls_ADLS_deEnergyGrid_properties_typeProperties_url": {
+			"value": "https://stdeenergygriddev.dfs.core.windows.net/"
+		},
+		"ls_ENTSOE_HTTP_properties_typeProperties_url": {
+			"value": "https://web-api.tp.entsoe.eu/api"
+		}
+	}
+}
