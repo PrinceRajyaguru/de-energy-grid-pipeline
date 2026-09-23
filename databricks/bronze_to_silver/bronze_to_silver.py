@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %pip install azure-storage-blob
-# MAGIC dbutils.library.restartPython()
+# MAGIC %pip install deltalake
 
 # COMMAND ----------
 
@@ -158,3 +158,22 @@ if all_gaps:
     gaps_df.write.mode("overwrite").saveAsTable("entsoe_silver_gaps")
 
 print("Done.")
+
+# COMMAND ----------
+
+import pandas as pd
+from deltalake import write_deltalake
+
+storage_options = {
+    "account_name": "stdeenergygriddev",
+    "account_key": storage_key,
+}
+
+def write_delta(df, container_name, table_name):
+    rows = [row.asDict() for row in df.collect()]
+    pdf = pd.DataFrame(rows)
+    path = f"abfss://{container_name}@stdeenergygriddev.dfs.core.windows.net/{table_name}"
+    write_deltalake(path, pdf, storage_options=storage_options, mode="overwrite")
+    print(f"Wrote Delta table: {path}")
+
+write_delta(silver_df, "silver", "entsoe_silver")

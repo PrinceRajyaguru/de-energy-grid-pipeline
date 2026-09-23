@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %pip install azure-storage-blob
-# MAGIC dbutils.library.restartPython()
+# MAGIC %pip install deltalake
 
 # COMMAND ----------
 
@@ -72,15 +72,22 @@ display(gold)
 
 # COMMAND ----------
 
-def upload_parquet(df, container_name, blob_name):
-    buf = io.BytesIO()
-    df.toPandas().to_parquet(buf, index=False)
-    buf.seek(0)
-    blob_service.get_container_client(container_name).upload_blob(blob_name, buf, overwrite=True)
-    print(f"Wrote {container_name}/{blob_name}")
+import pandas as pd
+from deltalake import write_deltalake
 
-upload_parquet(spark.table("entsoe_silver"), "silver", "entsoe_silver.parquet")
-upload_parquet(gold, "gold", "entsoe_gold_hourly.parquet")
+storage_options = {
+    "account_name": "stdeenergygriddev",
+    "account_key": storage_key,
+}
+
+def write_delta(df, container_name, table_name):
+    rows = [row.asDict() for row in df.collect()]
+    pdf = pd.DataFrame(rows)
+    path = f"abfss://{container_name}@stdeenergygriddev.dfs.core.windows.net/{table_name}"
+    write_deltalake(path, pdf, storage_options=storage_options, mode="overwrite")
+    print(f"Wrote Delta table: {path}")
+
+write_delta(gold, "gold", "entsoe_gold_hourly")
 
 # COMMAND ----------
 
