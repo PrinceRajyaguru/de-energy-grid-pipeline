@@ -19,10 +19,12 @@
 				"type": "string"
 			},
 			"outDomain": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "''"
 			},
 			"outBiddingZoneDomain": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "''"
 			},
 			"periodStart": {
 				"type": "string"
