@@ -1,0 +1,27 @@
+{
+	"name": "ds_Bronze_Sink",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_ADLS_deEnergyGrid",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"datasetType": {
+				"type": "string"
+			},
+			"fileName": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Binary",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "@dataset().fileName",
+				"folderPath": "@dataset().datasetType",
+				"fileSystem": "bronze"
+			}
+		}
+	}
+}
