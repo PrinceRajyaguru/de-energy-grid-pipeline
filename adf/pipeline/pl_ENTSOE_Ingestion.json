@@ -56,12 +56,13 @@
 							"userProperties": [],
 							"typeProperties": {
 								"source": {
-									"type": "RestSource",
-									"httpRequestTimeout": "00:01:40",
-									"requestInterval": "00.00:00:00.010",
-									"requestMethod": "GET",
-									"paginationRules": {
-										"supportRFC5988": "true"
+									"type": "BinarySource",
+									"storeSettings": {
+										"type": "HttpReadSettings",
+										"requestMethod": "GET"
+									},
+									"formatSettings": {
+										"type": "BinaryReadSettings"
 									}
 								},
 								"sink": {
@@ -74,12 +75,15 @@
 							},
 							"inputs": [
 								{
-									"referenceName": "ds_ENTSOE_Source",
+									"referenceName": "ds_ENTSOE_Source_HTTP",
 									"type": "DatasetReference",
 									"parameters": {
 										"securityToken": "@activity('GetEntsoeToken').output.value",
 										"documentType": "@item().documentType",
-										"processType": "@item().processType",
+										"processType": {
+											"value": "@item().processType",
+											"type": "Expression"
+										},
 										"inDomain": "@item().inDomain",
 										"outDomain": "@item().outDomain",
 										"outBiddingZoneDomain": "@item().outBiddingZoneDomain",
