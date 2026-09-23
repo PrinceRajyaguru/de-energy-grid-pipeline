@@ -1,0 +1,10 @@
+{
+	"name": "ls_ADLS_deEnergyGrid",
+	"properties": {
+		"annotations": [],
+		"type": "AzureBlobFS",
+		"typeProperties": {
+			"url": "https://stdeenergygriddev.dfs.core.windows.net/"
+		}
+	}
+}
