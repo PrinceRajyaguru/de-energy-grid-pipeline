@@ -16,6 +16,9 @@
 		},
 		"tr_Daily_5AM_UTC_properties_pl_ENTSOE_Ingestion_parameters_targetDate": {
 			"value": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'yyyy-MM-dd')"
+		},
+		"tr_Monthly_Capacity_properties_pl_ENTSOE_Capacity_parameters_targetYear": {
+			"value": "@string(year(trigger().scheduledTime))"
 		}
 	}
 }

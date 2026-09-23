@@ -23,6 +23,10 @@
 			"type": "string",
 			"defaultValue": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'yyyy-MM-dd')"
 		},
+		"tr_Monthly_Capacity_properties_pl_ENTSOE_Capacity_parameters_targetYear": {
+			"type": "string",
+			"defaultValue": "@string(year(trigger().scheduledTime))"
+		},
 		"containerUri": {
 			"type": "string",
 			"metadata": "URI to storage account containing linked ARM templates"
@@ -61,6 +65,9 @@
 					},
 					"tr_Daily_5AM_UTC_properties_pl_ENTSOE_Ingestion_parameters_targetDate": {
 						"value": "[parameters('tr_Daily_5AM_UTC_properties_pl_ENTSOE_Ingestion_parameters_targetDate')]"
+					},
+					"tr_Monthly_Capacity_properties_pl_ENTSOE_Capacity_parameters_targetYear": {
+						"value": "[parameters('tr_Monthly_Capacity_properties_pl_ENTSOE_Capacity_parameters_targetYear')]"
 					}
 				}
 			},
